@@ -121,7 +121,6 @@ local function checkCrash()
 			crash = 0
 			crashSprite:remove()
 		end
-
 end
 
 local function setLap()
@@ -242,7 +241,8 @@ function playdate.update() -- Waits for user to press A before resetting/restart
 			resetTimer()
 		end
 	else
-		
+	
+	--main game loop	
 	setSpeed()
 	checkCrash()
 	setLap()
