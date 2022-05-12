@@ -13,6 +13,8 @@ local car1Sprite = nil -- Car sprite in the right lane of the road
 local car2Sprite = nil -- Car sprite in the left lane of the road 
 local stripeSprite = nil -- Center stripe sprite on the road
 local shifterSprite = nil -- Gear shifter sprite
+local shiftConsoleSprite = nil -- Console for the Gear Shift Sprite
+local edgeSprite = nil -- Edge of the screen to hide the cars
 local wheelSprite = nil -- Steering wheel sprite
 local crashSprite = nil -- Crash sprite that appears when there is a collision
 
@@ -128,25 +130,25 @@ local function setSpeed()
 		car1Speed = -1
 		car2Speed = -2
 		stripeSpeed = 0
-		shifterSprite:moveTo(57,151)
+		shifterSprite:moveTo(46,151)
 	elseif (gearSet == 1)
 	then
 		car1Speed = 0
 		car2Speed = -1
 		stripeSpeed = 2
-		shifterSprite:moveTo(57,131)
+		shifterSprite:moveTo(46,131)
 	elseif gearSet == 2
 	then
 		car1Speed = 1
 		car2Speed = 1
 		stripeSpeed = 3
-		shifterSprite:moveTo(57,111)
+		shifterSprite:moveTo(46,111)
 	elseif gearSet == 3
 	then
 		car1Speed = 2
 		car2Speed = 1
 		stripeSpeed = 4
-		shifterSprite:moveTo(57,91)
+		shifterSprite:moveTo(46,91)
 	end
 end
 
@@ -169,6 +171,16 @@ local function initialize()
 	car2Sprite:moveTo(car2Location,148)
 	car2Sprite:add()
 
+	local shiftConsoleImage = gfx.image.new("images/shiftconsole")
+	shiftConsoleSprite = gfx.sprite.new(shiftConsoleImage)
+	shiftConsoleSprite:moveTo(32, 121)
+	shiftConsoleSprite:add()
+
+	local edgeImage = gfx.image.new("images/edge")
+	edgeSprite = gfx.sprite.new(edgeImage)
+	edgeSprite:moveTo(398, 121)
+	edgeSprite:add()
+
 	local playerImage = gfx.image.new("images/player")
 	playerSprite = gfx.sprite.new(playerImage)
 	playerSprite:setCollideRect(8, 2, 44, 32)
@@ -186,7 +198,7 @@ local function initialize()
 	
 	local shifterImage = gfx.image.new("images/shifter")
 	shifterSprite = gfx.sprite.new(shifterImage)
-	shifterSprite:moveTo(57,151)
+	shifterSprite:moveTo(46,151)
 	shifterSprite:add()
 
 	local backgroundImage = gfx.image.new("images/background")
