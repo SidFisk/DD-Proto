@@ -108,6 +108,22 @@ local function moveCars()
 	end
 end
 
+local function checkCrash()
+-- Checks to see if the cars have collided.  Adjusts speeds (stops the game) until crash clears
+	local crashCheck = playerSprite:overlappingSprites()
+		if #crashCheck >= 1 then
+			crash = 1
+			stripeSpeed = 0
+			car1Speed = 0
+			car2Speed = 0
+			crashSprite:add()
+		else
+			crash = 0
+			crashSprite:remove()
+		end
+
+end
+
 local function setLap()
 --Adds to the lapCount (score) as long as the game isn't in a crash state.
 	if crash == 0 then
@@ -228,19 +244,7 @@ function playdate.update() -- Waits for user to press A before resetting/restart
 	else
 		
 	setSpeed()
-	
-	local checkCrash = playerSprite:overlappingSprites()
-		if #checkCrash >= 1 then
-			crash = 1
-			stripeSpeed = 0
-			car1Speed = 0
-			car2Speed = 0
-			crashSprite:add()
-		else
-			crash = 0
-			crashSprite:remove()
-		end
-
+	checkCrash()
 	setLap()
 	movePlayer()
 	moveStripe()
