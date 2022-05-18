@@ -9,13 +9,13 @@ local gfx <const> = playdate.graphics
 local snd = playdate.sound
 
 --Sounds
-local brah = snd.sampleplayer.new('sounds/brah')
-local crashSound = snd.sampleplayer.new('sounds/crashSound')
+local brah = snd.sampleplayer.new('sounds/brah') --Engine Noise Sample
+local crashSound = snd.sampleplayer.new('sounds/crashSound') -- Crash Noise Sample
 
 --Sprites
 local playerSprite = nil -- Player sprite (car) that is steerable
 local car1Sprite = nil -- Car sprite in the right lane of the road
-local car2Sprite = nil -- Car sprite in the left lane of the road 
+local car2Sprite = nil -- Car sprite in the left lane of the road
 local stripeSprite = nil -- Center stripe sprite on the road
 local shifterSprite = nil -- Gear shifter sprite
 local shiftConsoleSprite = nil -- Console for the Gear Shift Sprite
@@ -28,7 +28,7 @@ local begin = 1 -- Flag for first start of game
 local crash = 0 -- Flag for crash/collision
 local crankReset = 0 -- Dummy variable to get around bug
 local playerSpeed = 2 -- How fast the player sprite moves up/down when steered with the crank
-local playerLocation = 120 -- Initial vertical location of the player sprite 
+local playerLocation = 120 -- Initial vertical location of the player sprite
 local car1Speed = 5 -- Initial speed of Car 1
 local car2Speed = 10 -- Initial speed of Car 2
 local stripeSpeed = 0 -- Initial speed of center stripe
@@ -36,7 +36,7 @@ local soundRate = 1 -- Initial rate of sound
 local wheelRotate = 0 -- Default rotation of steering weheel
 local playerAdjust = 0 -- Default vertical adjustment of player sprite
 local stripeLocation = 238 -- Default vertical location of center strip
-local car1Location = 125 -- Default horizontal location of Car 1 
+local car1Location = 125 -- Default horizontal location of Car 1
 local car2Location = 175 -- Default horizontal location of Car 2
 local playTimer = nil -- Value of the timer
 local playTime = 60 * 1000 -- Total time allowed (ms)
@@ -68,7 +68,7 @@ local function updateText()
 end
 
 local function movePlayer()
--- Function to move the player based on crank motion.  Keeps player within the guardrails.
+-- Function to move the player based on crank motion.  Keeps player within the guard rails
 	playerAdjust = playdate.getCrankTicks(36)
 	playerLocation += playerAdjust*playerSpeed*-1
 	playerSprite:moveTo(363, playerLocation)
@@ -114,7 +114,7 @@ local function moveCars()
 end
 
 local function playSound()
---plays engine sound and crash sound	
+--plays engine sound with a rate adjustment based on playerspeed and a crash sound (if crashed)
 	if not(brah:isPlaying()) 
 		then brah:play(1,soundRate) 
 		end
@@ -143,10 +143,10 @@ local function setLap()
 	if crash == 0 then
 		lapCount += gearSet
 	end
-end 
+end
 
 local function setSpeed()
--- Reads the dpad and adjusts the gear lever position accordingly.  Speeds for objects are set based on gearSet value.
+-- Reads the dpad and adjusts the gear lever position accordingly.  Speeds for objects are set based on gearSet value.  Stops sound loop with each gear change to allow for a new sound to play that matches the new gear
 	if playdate.buttonJustPressed(playdate.kButtonUp) then
 		gearSet += 1
 		brah:stop() 
@@ -156,7 +156,7 @@ local function setSpeed()
 		gearSet -= 1
 		brah:stop()
 		if gearSet <0 then gearSet = 0 end
-	end	
+	end
 	if (gearSet == 0)
 	then
 		car1Speed = -1
@@ -189,7 +189,7 @@ local function setSpeed()
 end
 
 local function initialize()
---initialize gamescreen.  Adds all sprites, backgrounds, to default locations	
+--initialize gamescreen.  Adds all sprites, backgrounds, to default locations
 	local stripeImage = gfx.image.new("images/line")
 	stripeSprite = gfx.sprite.new(stripeImage)
 	stripeSprite:moveTo(stripeLocation, 120)
@@ -200,7 +200,7 @@ local function initialize()
 	car1Sprite:moveTo(car1Location,95)
 	car1Sprite:setCollideRect(0, 0, car1Sprite:getSize())
 	car1Sprite:add()
-	
+
 	local car2Image = gfx.image.new("images/car1")
 	car2Sprite = gfx.sprite.new(car2Image)
 	car2Sprite:setCollideRect(0, 0, car2Sprite:getSize())
@@ -227,11 +227,11 @@ local function initialize()
 	wheelSprite = gfx.sprite.new(wheelImage)
 	wheelSprite:moveTo(200,225)
 	wheelSprite:add()
-	
+
 	local crashImage = gfx.image.new("images/crash")
 	crashSprite = gfx.sprite.new(crashImage)
 	crashSprite:moveTo(357, 120)
-	
+
 	local shifterImage = gfx.image.new("images/shifter")
 	shifterSprite = gfx.sprite.new(shifterImage)
 	shifterSprite:moveTo(46,151)
@@ -256,7 +256,7 @@ if begin == 1 then -- Trigger to have timer be already at 0 on game start.  Forc
 	gfx.sprite.update()
 end
 
-function playdate.update() -- Waits for user to press A before resetting/restarting the gam
+function playdate.update() -- Waits for user to press A before resetting/restarting the game
 	if playTimer.value == 0 then
 		brah:stop()
 		crashSound:stop()
@@ -264,11 +264,11 @@ function playdate.update() -- Waits for user to press A before resetting/restart
 		updateText()
 		if playdate.buttonJustPressed(playdate.kButtonA) then
 			resetTimer()
-			
+
 		end
 	else
-	
-	--main game loop	
+
+	--main game loop
 	setSpeed()
 	checkCrash()
 	setLap()
@@ -279,11 +279,10 @@ function playdate.update() -- Waits for user to press A before resetting/restart
 	gfx.sprite.update()
 	updateText()
 	playdate.timer.updateTimers()
-	
+
 	end
-		
-	
+
 	crankReset = playdate.getCrankTicks(36)	-- workaround to have one more read of a crank not impact player position on restart
-	
+
 end
 
