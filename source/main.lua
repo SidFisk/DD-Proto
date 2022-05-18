@@ -6,6 +6,11 @@ import "CoreLibs/crank"
 
 --Shortcuts
 local gfx <const> = playdate.graphics
+local snd = playdate.sound
+
+--Sounds
+local brah = snd.sampleplayer.new('sounds/brah')
+local crashSound = snd.sampleplayer.new('sounds/crashSound')
 
 --Sprites
 local playerSprite = nil -- Player sprite (car) that is steerable
@@ -27,6 +32,7 @@ local playerLocation = 120 -- Initial vertical location of the player sprite
 local car1Speed = 5 -- Initial speed of Car 1
 local car2Speed = 10 -- Initial speed of Car 2
 local stripeSpeed = 0 -- Initial speed of center stripe
+local soundRate = 1 -- Initial rate of sound
 local wheelRotate = 0 -- Default rotation of steering weheel
 local playerAdjust = 0 -- Default vertical adjustment of player sprite
 local stripeLocation = 238 -- Default vertical location of center strip
@@ -43,7 +49,6 @@ local function resetTimer()
 	playTimer=playdate.timer.new(playTime, playTime, 0, playdate.easingFunctions.linear)
 	lapCount = 0
 	gearSet = 0
-	lapSpeed = 0
 	playerLocation = 120
 	playerAdjust = 0
 	wheelRotate = 0
@@ -54,7 +59,7 @@ end
 local function updateText() 
 -- Updates score and timer values to the screen (also commented out debug elements)
 	--gfx.drawText("Gear: " .. gearSet, 100, 80)
-	gfx.drawText(math.ceil(lapCount/200), 45, 192)
+	gfx.drawText(math.ceil(lapCount/50), 45, 192)
 	--gfx.drawText("C1: " .. car1Location, 100, 100)
 	--gfx.drawText("Player: " .. playerLocation, 200, 100)
 	--gfx.drawText("C2: " .. car2Location, 100, 125)
@@ -83,7 +88,7 @@ local function moveStripe()
 -- Animates center stripe based on speed.  Resets position if animation takes stripe off screen.
 	stripeLocation = stripeLocation + stripeSpeed
 	stripeSprite:moveTo(stripeLocation, 120)
-	if stripeLocation >= 248 then
+			if stripeLocation >= 248 then
 		stripeLocation = 238
 	end
 end
@@ -106,6 +111,16 @@ local function moveCars()
 	if car2Location <= 50 then
 		car2Location = 420
 	end
+end
+
+local function playSound()
+--plays engine sound and crash sound	
+	if not(brah:isPlaying()) 
+		then brah:play(1,soundRate) 
+		end
+	if (crash == 1 and not(crashSound:isPlaying())) 
+		then crashSound:play()
+		end
 end
 
 local function checkCrash()
@@ -133,11 +148,13 @@ end
 local function setSpeed()
 -- Reads the dpad and adjusts the gear lever position accordingly.  Speeds for objects are set based on gearSet value.
 	if playdate.buttonJustPressed(playdate.kButtonUp) then
-		gearSet += 1 
+		gearSet += 1
+		brah:stop() 
 		if gearSet > 3 then gearSet = 3 end
 	end
 	if playdate.buttonJustPressed(playdate.kButtonDown) then
 		gearSet -= 1
+		brah:stop()
 		if gearSet <0 then gearSet = 0 end
 	end	
 	if (gearSet == 0)
@@ -145,24 +162,28 @@ local function setSpeed()
 		car1Speed = -1
 		car2Speed = -2
 		stripeSpeed = 0
+		soundRate = 1
 		shifterSprite:moveTo(46,151)
 	elseif (gearSet == 1)
 	then
 		car1Speed = 0
 		car2Speed = -1
 		stripeSpeed = 2
+		soundRate = 1.2
 		shifterSprite:moveTo(46,131)
 	elseif gearSet == 2
 	then
 		car1Speed = 1
 		car2Speed = 1
 		stripeSpeed = 3
+		soundRate = 1.4
 		shifterSprite:moveTo(46,111)
 	elseif gearSet == 3
 	then
 		car1Speed = 2
 		car2Speed = 1
 		stripeSpeed = 4
+		soundRate = 1.6
 		shifterSprite:moveTo(46,91)
 	end
 end
@@ -237,8 +258,13 @@ end
 
 function playdate.update() -- Waits for user to press A before resetting/restarting the gam
 	if playTimer.value == 0 then
+		brah:stop()
+		crashSound:stop()
+		gfx.sprite.update()
+		updateText()
 		if playdate.buttonJustPressed(playdate.kButtonA) then
 			resetTimer()
+			
 		end
 	else
 	
@@ -249,12 +275,14 @@ function playdate.update() -- Waits for user to press A before resetting/restart
 	movePlayer()
 	moveStripe()
 	moveCars()
+	playSound()
 	gfx.sprite.update()
 	updateText()
 	playdate.timer.updateTimers()
 	
 	end
 		
+	
 	crankReset = playdate.getCrankTicks(36)	-- workaround to have one more read of a crank not impact player position on restart
 	
 end
