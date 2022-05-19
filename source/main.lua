@@ -163,28 +163,28 @@ local function setSpeed()
 		car2Speed = -2
 		stripeSpeed = 0
 		soundRate = 1
-		shifterSprite:moveTo(46,151)
+		shifterSprite:moveTo(45,151)
 	elseif (gearSet == 1)
 	then
 		car1Speed = 0
 		car2Speed = -1
 		stripeSpeed = 2
 		soundRate = 1.2
-		shifterSprite:moveTo(46,131)
+		shifterSprite:moveTo(45,131)
 	elseif gearSet == 2
 	then
 		car1Speed = 1
 		car2Speed = 1
 		stripeSpeed = 3
 		soundRate = 1.4
-		shifterSprite:moveTo(46,111)
+		shifterSprite:moveTo(45,111)
 	elseif gearSet == 3
 	then
 		car1Speed = 2
 		car2Speed = 1
 		stripeSpeed = 4
 		soundRate = 1.6
-		shifterSprite:moveTo(46,91)
+		shifterSprite:moveTo(45,91)
 	end
 end
 
@@ -234,7 +234,7 @@ local function initialize()
 
 	local shifterImage = gfx.image.new("images/shifter")
 	shifterSprite = gfx.sprite.new(shifterImage)
-	shifterSprite:moveTo(46,151)
+	shifterSprite:moveTo(45,151)
 	shifterSprite:add()
 
 	local backgroundImage = gfx.image.new("images/background")
