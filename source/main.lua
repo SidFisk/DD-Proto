@@ -22,6 +22,7 @@ local shiftConsoleSprite = nil -- Console for the Gear Shift Sprite
 local edgeSprite = nil -- Edge of the screen to hide the cars
 local wheelSprite = nil -- Steering wheel sprite
 local crashSprite = nil -- Crash sprite that appears when there is a collision
+local abuttonSprite = nil -- Sprite to denote A button pressing
 
 --Variables
 local begin = 1 -- Flag for first start of game
@@ -64,7 +65,7 @@ local function updateText()
 	--gfx.drawText("Player: " .. playerLocation, 200, 100)
 	--gfx.drawText("C2: " .. car2Location, 100, 125)
 	--gfx.drawText("Stripe: " .. stripeSpeed, 100, 145)
-	gfx.drawText(math.ceil(playTimer.value/1000), 37, 30)
+	gfx.drawText(math.ceil(playTimer.timeLeft/1000), 37, 30)
 end
 
 local function movePlayer()
@@ -123,10 +124,19 @@ local function playSound()
 		end
 end
 
+local function toggleAbutton()
+	if playdate.buttonIsPressed(playdate.kButtonA) then
+		abuttonSprite:add()
+	else
+		abuttonSprite:remove()
+		
+	end
+end
+
 local function checkCrash()
 -- Checks to see if the cars have collided.  Adjusts speeds (stops the game) until crash clears
 	local crashCheck = playerSprite:overlappingSprites()
-		if #crashCheck >= 1 then
+		if #crashCheck >= 1 and not(playdate.buttonIsPressed(playdate.kButtonA)) then
 			crash = 1
 			stripeSpeed = 0
 			car1Speed = 0
@@ -140,7 +150,7 @@ end
 
 local function setLap()
 --Adds to the lapCount (score) as long as the game isn't in a crash state.
-	if crash == 0 then
+	if crash == 0 and not(playdate.buttonIsPressed(playdate.kButtonA)) then
 		lapCount += gearSet
 	end
 end
@@ -190,6 +200,11 @@ end
 
 local function initialize()
 --initialize gamescreen.  Adds all sprites, backgrounds, to default locations
+	
+	local abuttonImage = gfx.image.new("images/abutton")
+	abuttonSprite = gfx.sprite.new(abuttonImage)
+	abuttonSprite:moveTo(300, 219)
+
 	local stripeImage = gfx.image.new("images/line")
 	stripeSprite = gfx.sprite.new(stripeImage)
 	stripeSprite:moveTo(stripeLocation, 120)
@@ -198,12 +213,12 @@ local function initialize()
 	local car1Image = gfx.image.new("images/car1")
 	car1Sprite = gfx.sprite.new(car1Image)
 	car1Sprite:moveTo(car1Location,95)
-	car1Sprite:setCollideRect(0, 0, car1Sprite:getSize())
+	car1Sprite:setCollideRect(3, 0, 35, 32)
 	car1Sprite:add()
 
 	local car2Image = gfx.image.new("images/car1")
 	car2Sprite = gfx.sprite.new(car2Image)
-	car2Sprite:setCollideRect(0, 0, car2Sprite:getSize())
+	car2Sprite:setCollideRect(3, 0, 35, 32)
 	car2Sprite:moveTo(car2Location,148)
 	car2Sprite:add()
 
@@ -219,7 +234,7 @@ local function initialize()
 
 	local playerImage = gfx.image.new("images/player")
 	playerSprite = gfx.sprite.new(playerImage)
-	playerSprite:setCollideRect(8, 2, 44, 32)
+	playerSprite:setCollideRect(13, 2, 33, 32)
 	playerSprite:moveTo(363,playerLocation)
 	playerSprite:add()
 
@@ -260,6 +275,7 @@ function playdate.update() -- Waits for user to press A before resetting/restart
 	if playTimer.value == 0 then
 		brah:stop()
 		crashSound:stop()
+		abuttonSprite:remove()
 		gfx.sprite.update()
 		updateText()
 		if playdate.buttonJustPressed(playdate.kButtonA) then
@@ -276,6 +292,7 @@ function playdate.update() -- Waits for user to press A before resetting/restart
 	moveStripe()
 	moveCars()
 	playSound()
+	toggleAbutton()
 	gfx.sprite.update()
 	updateText()
 	playdate.timer.updateTimers()
