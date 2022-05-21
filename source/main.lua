@@ -11,6 +11,8 @@ local snd = playdate.sound
 --Sounds
 local brah = snd.sampleplayer.new('sounds/brah') --Engine Noise Sample
 local crashSound = snd.sampleplayer.new('sounds/crashSound') -- Crash Noise Sample
+local shiftSound = snd.sampleplayer.new('sounds/shift') -- Shift lever sample
+local skidSound = snd.sampleplayer.new('sounds/skid') -- skidding tires sample
 
 --Sprites
 local playerSprite = nil -- Player sprite (car) that is steerable
@@ -58,13 +60,8 @@ local function resetTimer()
 end
 
 local function updateText() 
--- Updates score and timer values to the screen (also commented out debug elements)
-	--gfx.drawText("Gear: " .. gearSet, 100, 80)
+-- Updates score and timer values to the screen
 	gfx.drawText(math.ceil(lapCount/50), 45, 192)
-	--gfx.drawText("C1: " .. car1Location, 100, 100)
-	--gfx.drawText("Player: " .. playerLocation, 200, 100)
-	--gfx.drawText("C2: " .. car2Location, 100, 125)
-	--gfx.drawText("Stripe: " .. stripeSpeed, 100, 145)
 	gfx.drawText(math.ceil(playTimer.timeLeft/1000), 37, 30)
 end
 
@@ -77,9 +74,11 @@ local function movePlayer()
 	if playerLocation <= 87 then
 		playerLocation = 87
 		wheelRotate = 0
+		skidSound:play()
 	elseif playerLocation >= 155 then
 		playerLocation = 155
 		wheelRotate = 0
+		skidSound:play()
 	end
 	wheelSprite:setRotation(wheelRotate)
 	wheelSprite: update()
@@ -117,7 +116,7 @@ end
 local function playSound()
 --plays engine sound with a rate adjustment based on playerspeed and a crash sound (if crashed)
 	if not(brah:isPlaying()) 
-		then brah:play(1,soundRate) 
+		then brah:play(1,soundRate)
 		end
 	if (crash == 1 and not(crashSound:isPlaying())) 
 		then crashSound:play()
@@ -160,12 +159,14 @@ local function setSpeed()
 	if playdate.buttonJustPressed(playdate.kButtonUp) then
 		gearSet += 1
 		brah:stop() 
-		if gearSet > 3 then gearSet = 3 end
+		if gearSet > 3 then gearSet = 3 else 
+		shiftSound:play() end
 	end
 	if playdate.buttonJustPressed(playdate.kButtonDown) then
 		gearSet -= 1
 		brah:stop()
-		if gearSet <0 then gearSet = 0 end
+		if gearSet <0 then gearSet = 0 else 
+			shiftSound:play() end
 	end
 	if (gearSet == 0)
 	then
@@ -200,7 +201,7 @@ end
 
 local function initialize()
 --initialize gamescreen.  Adds all sprites, backgrounds, to default locations
-	
+
 	local abuttonImage = gfx.image.new("images/abutton")
 	abuttonSprite = gfx.sprite.new(abuttonImage)
 	abuttonSprite:moveTo(300, 219)
