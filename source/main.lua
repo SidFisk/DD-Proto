@@ -25,11 +25,15 @@ local edgeSprite = nil -- Edge of the screen to hide the cars
 local wheelSprite = nil -- Steering wheel sprite
 local crashSprite = nil -- Crash sprite that appears when there is a collision
 local abuttonSprite = nil -- Sprite to denote A button pressing
+local startSprite = nil -- Start banner
+local finishSprite = nil -- Finish banner
 
 --Variables
-local begin = 1 -- Flag for first start of game
+local begin = 0 -- Flag for first start of game
 local crash = 0 -- Flag for crash/collision
-local crankReset = 0 -- Dummy variable to get around bug
+local totalPlays = 0 -- Tracks the total plays historically -- reads from store
+local highScore = 0 -- Variable to keep high score
+local saveState = 0 -- Flag to not over-save
 local playerSpeed = 2 -- How fast the player sprite moves up/down when steered with the crank
 local playerLocation = 120 -- Initial vertical location of the player sprite
 local car1Speed = 5 -- Initial speed of Car 1
@@ -42,10 +46,46 @@ local stripeLocation = 238 -- Default vertical location of center strip
 local car1Location = 125 -- Default horizontal location of Car 1
 local car2Location = 175 -- Default horizontal location of Car 2
 local playTimer = nil -- Value of the timer
-local playTime = 60 * 1000 -- Total time allowed (ms)
+local playTime = 60*1000 -- Total time allowed (ms)
 local lapCount = 0 -- Score for the game
 local gearSet = 0 -- Initial gear setting 
 
+local function checkStart()
+	if begin == 0 then
+		startSprite:add()
+	end
+end
+
+local function checkFinish()
+	if (playTimer.timeLeft == 0 and begin > 0) then 
+		brah:stop()
+		crashSound:stop()
+		finishSprite:add()
+		if lapCount > highScore then 
+			highScore = lapCount 
+		end
+		if saveState == 1 then 
+			saveGameData()
+			saveState = 0
+		end
+	end
+end
+
+function saveGameData()
+	local gameData = {
+		TOTAL_PLAYS = totalPlays;
+		HIGH_SCORE = highScore
+	}
+	playdate.datastore.write(gameData)
+end
+
+function loadGameData()
+	local gameData = playdate.datastore.read()
+	if gameData then
+		highScore = gameData.HIGH_SCORE
+		totalPlays = gameData.TOTAL_PLAYS
+	end
+end
 
 local function resetTimer() 
 --Resets game timer as well as resets score, gear, and object location
@@ -61,8 +101,13 @@ end
 
 local function updateText() 
 -- Updates score and timer values to the screen
-	gfx.drawText(math.ceil(lapCount/50), 45, 192)
-	gfx.drawText(math.ceil(playTimer.timeLeft/1000), 37, 30)
+	gfx.drawText(math.ceil(lapCount/50), 44, 192)
+	gfx.drawText(math.ceil(playTimer.timeLeft/1000), 35, 30)
+	if (playTimer.timeLeft == 0 and begin > 0) then 
+		gfx.drawTextAligned(math.ceil(lapCount/50), 250, 118, rightMargin)
+		gfx.drawTextAligned(totalPlays, 250, 135, rightMargin)
+		gfx.drawTextAligned(math.ceil(highScore/50), 250, 152, rightMargin)
+	end
 end
 
 local function movePlayer()
@@ -83,6 +128,8 @@ local function movePlayer()
 	wheelSprite:setRotation(wheelRotate)
 	wheelSprite: update()
 end
+
+
 
 local function moveStripe()
 -- Animates center stripe based on speed.  Resets position if animation takes stripe off screen.
@@ -174,33 +221,41 @@ local function setSpeed()
 		car2Speed = -2
 		stripeSpeed = 0
 		soundRate = 1
-		shifterSprite:moveTo(45,151)
+		shifterSprite:moveTo(46,151)
 	elseif (gearSet == 1)
 	then
 		car1Speed = 0
 		car2Speed = -1
 		stripeSpeed = 2
 		soundRate = 1.2
-		shifterSprite:moveTo(45,131)
+		shifterSprite:moveTo(46,131)
 	elseif gearSet == 2
 	then
 		car1Speed = 1
 		car2Speed = 1
 		stripeSpeed = 3
 		soundRate = 1.4
-		shifterSprite:moveTo(45,111)
+		shifterSprite:moveTo(46,111)
 	elseif gearSet == 3
 	then
-		car1Speed = 2
+		car1Speed = 2.2
 		car2Speed = 1
 		stripeSpeed = 4
 		soundRate = 1.6
-		shifterSprite:moveTo(45,91)
+		shifterSprite:moveTo(46,91)
 	end
 end
 
 local function initialize()
 --initialize gamescreen.  Adds all sprites, backgrounds, to default locations
+
+	local startImage = gfx.image.new("images/startcard")
+	startSprite = gfx.sprite.new(startImage)
+	startSprite:moveTo(200, 120)		
+	
+	local finishImage = gfx.image.new("images/finish")
+	finishSprite = gfx.sprite.new(finishImage)
+	finishSprite:moveTo(200, 120)	
 
 	local abuttonImage = gfx.image.new("images/abutton")
 	abuttonSprite = gfx.sprite.new(abuttonImage)
@@ -250,7 +305,7 @@ local function initialize()
 
 	local shifterImage = gfx.image.new("images/shifter")
 	shifterSprite = gfx.sprite.new(shifterImage)
-	shifterSprite:moveTo(45,151)
+	shifterSprite:moveTo(46,151)
 	shifterSprite:add()
 
 	local backgroundImage = gfx.image.new("images/background")
@@ -261,31 +316,35 @@ local function initialize()
 			gfx.clearClipRect()
 		end
 	)
+
 	resetTimer()
 end
 
 initialize()
+loadGameData()
 
-if begin == 1 then -- Trigger to have timer be already at 0 on game start.  Forcing user to press A (like they need to with reset) to first start the game
-	playTimer.value = 0
-	begin = 0
-	gfx.sprite.update()
+if begin == 0 then
+	playTimer.value = 0 
 end
 
 function playdate.update() -- Waits for user to press A before resetting/restarting the game
+
 	if playTimer.value == 0 then
-		brah:stop()
-		crashSound:stop()
-		abuttonSprite:remove()
-		gfx.sprite.update()
-		updateText()
+		checkStart()
+		checkFinish()
 		if playdate.buttonJustPressed(playdate.kButtonA) then
+			startSprite:remove()
+			finishSprite:remove()
+			abuttonSprite:remove()
+			begin = 1
+			saveState = 1
+			totalPlays += 1
 			resetTimer()
-
 		end
+		gfx.sprite.update()
+		if begin == 1 then updateText() end
 	else
-
-	--main game loop
+	
 	setSpeed()
 	checkCrash()
 	setLap()
@@ -300,7 +359,8 @@ function playdate.update() -- Waits for user to press A before resetting/restart
 
 	end
 
-	crankReset = playdate.getCrankTicks(36)	-- workaround to have one more read of a crank not impact player position on restart
-
+	local crankReset = playdate.getCrankTicks(36)	-- workaround to have one more read of a crank not impact player position on restart
+	
 end
+
 
