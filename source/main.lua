@@ -51,12 +51,14 @@ local lapCount = 0 -- Score for the game
 local gearSet = 0 -- Initial gear setting 
 
 local function checkStart()
+	-- adds the start screen if at the beginning (fresh launch) of the game
 	if begin == 0 then
 		startSprite:add()
 	end
 end
 
 local function checkFinish()
+	-- If the timer has run out -- stops all sounds, adds the finish image, and saves a new high score if higher than the previous
 	if (playTimer.timeLeft == 0 and begin > 0) then 
 		brah:stop()
 		crashSound:stop()
@@ -72,6 +74,7 @@ local function checkFinish()
 end
 
 function saveGameData()
+	--saves number of plays and highscore to Playdate storage
 	local gameData = {
 		TOTAL_PLAYS = totalPlays;
 		HIGH_SCORE = highScore
@@ -80,11 +83,22 @@ function saveGameData()
 end
 
 function loadGameData()
+	-- loads number of plays and highscore previously saved to Playdate storage (if it exists)
 	local gameData = playdate.datastore.read()
 	if gameData then
 		highScore = gameData.HIGH_SCORE
 		totalPlays = gameData.TOTAL_PLAYS
 	end
+end
+
+function playdate.gameWillTerminate()
+	-- saves game data if the game is force-closed by the user
+	saveGameData()
+end
+
+function playdate.deviceWillSleep()
+	-- saves game data if the game is closed by the device sleeping 
+	saveGameData()
 end
 
 local function resetTimer() 
@@ -104,6 +118,7 @@ local function updateText()
 	gfx.drawText(math.ceil(lapCount/50), 44, 192)
 	gfx.drawText(math.ceil(playTimer.timeLeft/1000), 35, 30)
 	if (playTimer.timeLeft == 0 and begin > 0) then 
+		-- if the game is over (timer is 0 and begin isn't 0) then update text on the finish screen 
 		gfx.drawTextAligned(math.ceil(lapCount/50), 250, 118, rightMargin)
 		gfx.drawTextAligned(totalPlays, 250, 135, rightMargin)
 		gfx.drawTextAligned(math.ceil(highScore/50), 250, 152, rightMargin)
@@ -330,6 +345,7 @@ end
 function playdate.update() -- Waits for user to press A before resetting/restarting the game
 
 	if playTimer.value == 0 then
+		-- two states are possible if the timer is 0.  You are at the start (new game launch) or you have finished a play session
 		checkStart()
 		checkFinish()
 		if playdate.buttonJustPressed(playdate.kButtonA) then
