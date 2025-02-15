@@ -46,7 +46,7 @@ local stripeLocation = 238 -- Default vertical location of center strip
 local car1Location = 125 -- Default horizontal location of Car 1
 local car2Location = 175 -- Default horizontal location of Car 2
 local playTimer = nil -- Value of the timer
-local playTime = 5*1000 -- Total time allowed (ms)
+local playTime = 60*1000 -- Total time allowed (ms)
 local lapCount = 0 -- Score for the game
 local gearSet = 0 -- Initial gear setting 
 
