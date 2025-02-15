@@ -46,7 +46,7 @@ local stripeLocation = 238 -- Default vertical location of center strip
 local car1Location = 125 -- Default horizontal location of Car 1
 local car2Location = 175 -- Default horizontal location of Car 2
 local playTimer = nil -- Value of the timer
-local playTime = 60*1000 -- Total time allowed (ms)
+local playTime = 5*1000 -- Total time allowed (ms)
 local lapCount = 0 -- Score for the game
 local gearSet = 0 -- Initial gear setting 
 
@@ -64,6 +64,7 @@ local function checkFinish()
 		brah:stop()
 		crashSound:stop()
 		finishSprite:add()
+	
 		
 		if lapCount > highScore then 
 			highScore = lapCount 
@@ -123,8 +124,11 @@ end
 
 local function updateText() 
 -- Updates score and timer values to the screen
-	gfx.drawText(math.ceil(lapCount/50), 44, 192)
-	gfx.drawText(math.ceil(playTimer.timeLeft/1000), 35, 30)
+	if hasStarted == true then
+		gfx.drawText(math.ceil(lapCount/50), 44, 192)
+		gfx.drawText(math.ceil(playTimer.timeLeft/1000), 35, 30)
+	end
+
 	if (playTimer.timeLeft == 0 and hasStarted == true) then 
 		-- if the game is over (timer is 0 and begin isn't 0) then update text on the finish screen 
 		gfx.drawTextAligned(math.ceil(lapCount/50), 250, 118, rightMargin)
@@ -366,7 +370,7 @@ function playdate.update() -- Waits for user to press A before resetting/restart
 			reset()
 		end
 		gfx.sprite.update()
-		if hasStarted == true then updateText() end
+		if hasStarted == true and lapCount > 0 then updateText() end
 	else
 	
 		setSpeed()
