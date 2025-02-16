@@ -49,12 +49,12 @@ local playTimer = nil -- Value of the timer
 local playTime = 60*1000 -- Total time allowed (ms)
 local lapCount = 0 -- Score for the game
 local gearSet = 0 -- Initial gear setting 
-
+	
 local function checkStart()
 	-- adds the start screen if at the beginning (fresh launch) of the game
 	if hasStarted == false then
 		startSprite:add()
-		hasStarted = true
+		-- hasStarted = true
 	end
 end
 
@@ -367,10 +367,12 @@ function playdate.update() -- Waits for user to press A before resetting/restart
 		checkStart()
 		checkFinish()
 		if playdate.buttonJustPressed(playdate.kButtonA) then
+			hasStarted = true
 			reset()
+		
 		end
 		gfx.sprite.update()
-		if hasStarted == true and lapCount > 0 then updateText() end
+		if hasStarted == true then updateText() end
 	else
 	
 		setSpeed()
