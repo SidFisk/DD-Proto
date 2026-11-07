@@ -1,8 +1,8 @@
-name=Retro Derby
+name=RetroDerby
 author=SidFisk Games
 description=Classic Hand-Held Game From Your Childhood
 bundleID=com.goolawn.RetroDerby
 version=1.7
 imagePath=images/card.png
 pdxversion=30101
-buildtime=847364170
+buildtime=847364543
