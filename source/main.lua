@@ -31,8 +31,8 @@ local finishSprite = nil -- Finish banner
 --Variables
 local hasStarted = false -- Flag for first start of game
 local crash = 0 -- Flag for crash/collision
-local totalPlays = 0 -- Tracks the total plays historically -- reads from store
-local highScore = 0 -- Variable to keep high score
+local totalPlays = { 0, 0, 0, 0 } -- Per mode (indexed like modes) -- Tracks the total plays historically -- reads from store
+local highScores = { 0, 0, 0, 0 } -- Best score for each mode (indexed like modes)
 local shouldSave = false -- Flag to not over-save
 local playerSpeed = 2 -- How fast the player sprite moves up/down when steered with the crank
 local playerLocation = 120 -- Initial vertical location of the player sprite
@@ -48,8 +48,25 @@ local car2Location = 175 -- Default horizontal location of Car 2
 local playTimer = nil -- Value of the timer
 local playTime = 60*1000 -- Total time allowed (ms)
 local lapCount = 0 -- Score for the game
+local backgroundImage = nil -- Road background for the round being played (Rogue modes use their own, see reset)
 local gearSet = 0 -- Initial gear setting 
 	
+--Game Modes
+local modes = {
+	{ name = "CLASSIC", desc = "Just like the original", finishFile = "images/finish_classic", speedMult = 1, scoreMult = 1, crashEnds = false }, -- Main game
+	{ name = "TURBO", desc = "Cars move faster and laps are doubled", finishFile = "images/finish_turbo", speedMult = 1.5, scoreMult = 2, crashEnds = false }, -- Faster cars, double score, 
+	{ name = "ROGUE", desc = "Classic with no second chances. One crash ends your run", finishFile = "images/finish_rogue", background = "images/background_rogue", speedMult = 1, scoreMult = 1, crashEnds = true }, -- Classic speed and score, but a crash ends the round
+	{ name = "ROGUE ENDLESS", desc = "No clock. Race as long as you dare.", finishFile = "images/finish_rogue_endless", background = "images/background_rogue", speedMult = 1, scoreMult = 1, crashEnds = true, endless = true }, -- Like Rogue, but no time limit: keeps going until you crash
+}
+local currentMode = 1 -- Index of the selected mode in modes
+local crashEnded = false -- Flag set when a crash ends the round (Rogue)
+local playedMode = 1 -- Mode of the round being played (or just finished), so changing the selector on the finish screen doesn't affect it
+
+local function aButtonHeld()
+	-- Holding A clears crashes and pauses scoring.  Disabled in modes where a crash ends the round (Rogue).
+	return playdate.buttonIsPressed(playdate.kButtonA) and not modes[currentMode].crashEnds
+end
+
 local function checkStart()
 	-- adds the start screen if at the beginning (fresh launch) of the game
 	if hasStarted == false then
@@ -60,19 +77,24 @@ end
 
 local function checkFinish()
 	-- If the timer has run out -- stops all sounds, adds the finish image, and saves a new high score if higher than the previous
-	if (playTimer.timeLeft == 0 and hasStarted == true) then 
+	if ((playTimer.timeLeft == 0 or crashEnded) and hasStarted == true) then 
 		brah:stop()
 		crashSound:stop()
-		finishSprite:add()
+		local finishImg = modes[playedMode].finishImg
+			if finishImg and finishSprite:getImage() ~= finishImg then
+				finishSprite:setImage(finishImg)
+			end
+			finishSprite:add()
+			crashSprite:remove()
 	
 		
-		if lapCount > highScore then 
-			highScore = lapCount 
+		if lapCount > highScores[playedMode] then 
+			highScores[playedMode] = lapCount 
 		end
 		
 		if shouldSave == true then 
 			shouldSave = false
-			totalPlays += 1
+			totalPlays[playedMode] += 1
 			saveGameData()
 		end
 	end
@@ -81,8 +103,8 @@ end
 function saveGameData()
 	--saves number of plays and highscore to Playdate storage
 	local gameData = {
-		TOTAL_PLAYS = totalPlays;
-		HIGH_SCORE = highScore
+		TOTAL_PLAYS_BY_MODE = totalPlays;
+		HIGH_SCORES = highScores
 	}
 	playdate.datastore.write(gameData)
 end
@@ -91,8 +113,16 @@ function loadGameData()
 	-- loads number of plays and highscore previously saved to Playdate storage (if it exists)
 	local gameData = playdate.datastore.read()
 	if gameData then
-		highScore = gameData.HIGH_SCORE
-		totalPlays = gameData.TOTAL_PLAYS
+		if gameData.HIGH_SCORES then
+				highScores = gameData.HIGH_SCORES
+			elseif gameData.HIGH_SCORE then
+				highScores[1] = gameData.HIGH_SCORE
+			end
+		if gameData.TOTAL_PLAYS_BY_MODE then
+			totalPlays = gameData.TOTAL_PLAYS_BY_MODE
+		elseif gameData.TOTAL_PLAYS then
+			totalPlays[1] = gameData.TOTAL_PLAYS -- Old save: all earlier plays were Classic
+		end
 	end
 end
 
@@ -108,7 +138,10 @@ end
 
 local function reset() 
 --Resets game timer as well as resets score, gear, and object location
-	playTimer=playdate.timer.new(playTime, playTime, 0, playdate.easingFunctions.linear)
+	-- Endless modes ignore the clock: use a timer so long (24 hours) that it never expires
+		local duration = playTime
+		if modes[currentMode].endless then duration = 24*60*60*1000 end
+		playTimer=playdate.timer.new(duration, duration, 0, playdate.easingFunctions.linear)
 	lapCount = 0
 	gearSet = 0
 	playerLocation = 120
@@ -116,24 +149,45 @@ local function reset()
 	wheelRotate = 0
 	car1Location = 125
 	car2Location = 175
-	startSprite:remove()
+	-- Move the sprites back to their start positions right away.  Otherwise checkCrash() runs on the
+		-- first frame against the old positions from the end of the last round, still sees the collision
+		-- that ended it, and (in Rogue) instantly ends the new round and counts it as a race.
+		playerSprite:moveTo(363, playerLocation)
+		car1Sprite:moveTo(car1Location, 95)
+		car2Sprite:moveTo(car2Location, 148)
+		crash = 0
+		crashSprite:remove()
+		startSprite:remove()
 	finishSprite:remove()
 	abuttonSprite:remove()
 	shouldSave = true
+		crashEnded = false
+		playedMode = currentMode
+			backgroundImage = modes[currentMode].bgImg
+			gfx.sprite.addDirtyRect(0, 0, 400, 240) -- redraw the road with this mode's background
 end
 
 local function updateText() 
 -- Updates score and timer values to the screen
 	if hasStarted == true then
 		gfx.drawText(math.ceil(lapCount/50), 44, 192)
-		gfx.drawText(math.ceil(playTimer.timeLeft/1000), 35, 30)
+		if modes[playedMode].endless then
+				-- Endless mode: draw an infinity symbol instead of the timer
+				gfx.setLineWidth(2)
+				gfx.setColor(0)
+				gfx.drawEllipseInRect(33, 35, 11, 8)
+				gfx.drawEllipseInRect(43, 35, 11, 8)
+				gfx.setLineWidth(1)
+			else
+				gfx.drawText(crashEnded and 0 or math.ceil(playTimer.timeLeft/1000), 35, 30)
+			end
 	end
 
-	if (playTimer.timeLeft == 0 and hasStarted == true) then 
+	if ((playTimer.timeLeft == 0 or crashEnded) and hasStarted == true) then 
 		-- if the game is over (timer is 0 and begin isn't 0) then update text on the finish screen 
 		gfx.drawTextAligned(math.ceil(lapCount/50), 250, 118, rightMargin)
-		gfx.drawTextAligned(totalPlays, 250, 135, rightMargin)
-		gfx.drawTextAligned(math.ceil(highScore/50), 250, 152, rightMargin)
+		gfx.drawTextAligned(totalPlays[playedMode], 250, 135, rightMargin)
+		gfx.drawTextAligned(math.ceil(highScores[playedMode]/50), 250, 152, rightMargin)
 	end
 end
 
@@ -158,7 +212,7 @@ end
 
 local function moveStripe()
 -- Animates center stripe based on speed.  Resets position if animation takes stripe off screen.
-	stripeLocation = stripeLocation + stripeSpeed
+	stripeLocation = stripeLocation + stripeSpeed * modes[currentMode].speedMult
 	stripeSprite:moveTo(stripeLocation, 120)
 	if stripeLocation >= 248 then
 		stripeLocation = 238
@@ -167,8 +221,8 @@ end
 
 local function moveCars()
 -- Animates the other cars.  Resets position as they move off screen to create a notion of a loop.  Loops both ways.
-	car1Location = car1Location + car1Speed
-	car2Location = car2Location + car2Speed
+	car1Location = car1Location + car1Speed * modes[currentMode].speedMult
+	car2Location = car2Location + car2Speed * modes[currentMode].speedMult
 	car1Sprite:moveTo(car1Location, 95)
 	car2Sprite:moveTo(car2Location, 148)
 	if car1Location >= 420 then
@@ -196,8 +250,8 @@ local function playSound()
 end
 
 local function toggleAbutton()
-	if playdate.buttonIsPressed(playdate.kButtonA) then
-		abuttonSprite:add()
+if aButtonHeld() then
+			abuttonSprite:add()
 	else
 		abuttonSprite:remove()
 		
@@ -207,12 +261,20 @@ end
 local function checkCrash()
 -- Checks to see if the cars have collided.  Adjusts speeds (stops the game) until crash clears
 	local collidingCars = playerSprite:overlappingSprites()
-	if #collidingCars >= 1 and not(playdate.buttonIsPressed(playdate.kButtonA)) then
+	if #collidingCars >= 1 and not(aButtonHeld()) then
 		crash = 1
 		stripeSpeed = 0
 		car1Speed = 0
 		car2Speed = 0
 		crashSprite:add()
+			if modes[currentMode].crashEnds then
+				-- Rogue: a crash ends the round.
+				-- Remove the timer first so updateTimers() can't overwrite the values below
+				playTimer:remove()
+				playTimer.value = 0
+				-- (timeLeft is read-only, so the crashEnded flag below tells the finish logic the round is over)
+					crashEnded = true
+			end
 	else
 		crash = 0
 		crashSprite:remove()
@@ -221,8 +283,8 @@ end
 
 local function setLap()
 --Adds to the lapCount (score) as long as the game isn't in a crash state.
-	if crash == 0 and not(playdate.buttonIsPressed(playdate.kButtonA)) then
-		lapCount += gearSet
+	if crash == 0 and not(aButtonHeld()) then
+		lapCount += gearSet * modes[currentMode].scoreMult
 	end
 end
 
@@ -288,6 +350,10 @@ local function initialize()
 	
 	local finishImage = gfx.image.new("images/finish")
 	finishSprite = gfx.sprite.new(finishImage)
+		for _, mode in ipairs(modes) do
+			mode.finishImg = gfx.image.new(mode.finishFile) -- Per-mode finish card
+				mode.bgImg = gfx.image.new(mode.background or "images/background") -- Per-mode road background
+		end
 	finishSprite:moveTo(200, 120)	
 
 	local abuttonImage = gfx.image.new("images/abutton")
@@ -341,7 +407,6 @@ local function initialize()
 	shifterSprite:moveTo(46,151)
 	shifterSprite:add()
 
-	local backgroundImage = gfx.image.new("images/background")
 	gfx.sprite.setBackgroundDrawingCallback(
 		function (x, y, width, height)
 			gfx.setClipRect(x,y,width,height)
@@ -360,19 +425,70 @@ if hasStarted == false then
 	playTimer.value = 0 
 end
 
+-- Fill in any modes missing from older saves (e.g. modes added later)
+for i = 1, #modes do
+	highScores[i] = highScores[i] or 0
+	totalPlays[i] = totalPlays[i] or 0
+end
+
+local inModeSelect = false -- True while the mode select screen is showing
+
+local function updateModeSelect()
+	-- Mode select screen: D-pad up/down chooses a mode, A starts a round in that mode
+	if playdate.buttonJustPressed(playdate.kButtonUp) then
+		currentMode -= 1
+		if currentMode < 1 then currentMode = #modes end
+	elseif playdate.buttonJustPressed(playdate.kButtonDown) then
+		currentMode += 1
+		if currentMode > #modes then currentMode = 1 end
+	end
+
+	if playdate.buttonJustPressed(playdate.kButtonA) then
+		inModeSelect = false
+		hasStarted = true
+		reset()
+		gfx.sprite.addDirtyRect(0, 0, 400, 240) -- redraw the whole game screen
+		return
+	end
+
+	gfx.clear()
+	gfx.drawText("SELECT MODE", 20, 10)
+	gfx.drawLine(16, 32, 384, 32)
+	gfx.drawLine(176, 40, 176, 200)
+
+	-- Modes listed vertically on the left, the selected one boxed
+	for i, mode in ipairs(modes) do
+		local y = 46 + (i - 1) * 32
+		gfx.drawText(mode.name, 28, y)
+		if i == currentMode then
+			gfx.drawRect(18, y - 6, 150, 26)
+		end
+	end
+
+	-- Description (and stats) of the selected mode on the right
+	gfx.drawTextInRect(modes[currentMode].desc, 190, 46, 194, 90)
+	gfx.drawText("HIGH SCORE: " .. math.ceil(highScores[currentMode]/50), 190, 150)
+	gfx.drawText("TOTAL RACES: " .. totalPlays[currentMode], 190, 170)
+
+	gfx.drawText("UP/DOWN: CHOOSE    A: START", 20, 214)
+end
+
 function playdate.update() -- Waits for user to press A before resetting/restarting the game
 
-	if playTimer.value == 0 then
+	if inModeSelect then
+		updateModeSelect()
+	elseif playTimer.value == 0 then
 		-- two states are possible if the timer is 0.  You are at the start (new game launch) or you have finished a play session
 		checkStart()
 		checkFinish()
 		if playdate.buttonJustPressed(playdate.kButtonA) then
-			hasStarted = true
-			reset()
+inModeSelect = true -- A on the start or finish screen opens the mode select screen
 		
 		end
 		gfx.sprite.update()
 		if hasStarted == true then updateText() end
+			
+-- (mode selection now happens on its own screen, see updateModeSelect)
 	else
 	
 		setSpeed()
