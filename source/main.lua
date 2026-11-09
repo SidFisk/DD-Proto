@@ -53,10 +53,10 @@ local gearSet = 0 -- Initial gear setting
 	
 --Game Modes
 local modes = {
-	{ name = "CLASSIC", desc = "Just like the original", finishFile = "images/finish_classic", speedMult = 1, scoreMult = 1, crashEnds = false }, -- Main game
-	{ name = "TURBO", desc = "Cars move faster and laps are doubled", finishFile = "images/finish_turbo", speedMult = 1.5, scoreMult = 2, crashEnds = false }, -- Faster cars, double score, 
-	{ name = "ROGUE", desc = "Classic with no second chances. One crash ends your run", finishFile = "images/finish_rogue", background = "images/background_rogue", speedMult = 1, scoreMult = 1, crashEnds = true }, -- Classic speed and score, but a crash ends the round
-	{ name = "ROGUE ENDLESS", desc = "No clock. Race as long as you dare.", finishFile = "images/finish_rogue_endless", background = "images/background_rogue", speedMult = 1, scoreMult = 1, crashEnds = true, endless = true }, -- Like Rogue, but no time limit: keeps going until you crash
+	{ name = "CLASSIC", desc = "Just like the original", finishFile = "images/finish_classic", speedMult = 1, scoreMult = 1, rogueMult = 0, crashEnds = false }, -- Main game
+	{ name = "TURBO", desc = "Cars move faster and laps are doubled", finishFile = "images/finish_turbo", speedMult = 1.5, scoreMult = 2, rogueMult = 0, crashEnds = false }, -- Faster cars, double score, 
+	{ name = "ROGUE", desc = "Classic with no second chances. One crash ends your run", finishFile = "images/finish_rogue", background = "images/background_rogue", speedMult = 1, scoreMult = 1, rogueMult = -1, crashEnds = true }, -- Classic speed and score, but a crash ends the round
+	{ name = "ROGUE ENDLESS", desc = "No clock. Race as long as you dare.", finishFile = "images/finish_rogue_endless", background = "images/background_rogue", speedMult = 1, rogueMult = -1, scoreMult = 1, crashEnds = true, endless = true }, -- Like Rogue, but no time limit: keeps going until you crash
 }
 local currentMode = 1 -- Index of the selected mode in modes
 local crashEnded = false -- Flag set when a crash ends the round (Rogue)
@@ -222,7 +222,7 @@ end
 local function moveCars()
 -- Animates the other cars.  Resets position as they move off screen to create a notion of a loop.  Loops both ways.
 	car1Location = car1Location + car1Speed * modes[currentMode].speedMult
-	car2Location = car2Location + car2Speed * modes[currentMode].speedMult
+	car2Location = car2Location + car2Speed * modes[currentMode].speedMult 
 	car1Sprite:moveTo(car1Location, 95)
 	car2Sprite:moveTo(car2Location, 148)
 	if car1Location >= 420 then
@@ -319,7 +319,7 @@ local function setSpeed()
 		shifterSprite:moveTo(46,151)
 	elseif (gearSet == 1)
 	then
-		car1Speed = 0
+		car1Speed = 1 * modes[currentMode].rogueMult
 		car2Speed = -1
 		stripeSpeed = 2
 		soundRate = 1.2
