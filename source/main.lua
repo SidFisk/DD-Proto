@@ -47,7 +47,7 @@ local car1Location = 125 -- Default horizontal location of Car 1
 local car2Location = 175 -- Default horizontal location of Car 2
 local playTimer = nil -- Value of the timer
 local playTime = 60*1000 -- Total time allowed (ms)
-local lapCount = 995 * 50 -- TEMP TEST: start at lap 995 -- Score for the game
+local lapCount = 0 -- Score for the game
 local backgroundImage = nil -- Road background for the round being played (Rogue modes use their own, see reset)
 local gearSet = 0 -- Initial gear setting 
 	
@@ -147,7 +147,7 @@ local function reset()
 		local duration = playTime
 		if modes[currentMode].endless then duration = 24*60*60*1000 end
 		playTimer=playdate.timer.new(duration, duration, 0, playdate.easingFunctions.linear)
-	lapCount = 995 * 50 -- TEMP TEST: start at lap 995
+	lapCount = 0
 	lapShown = nil -- counter snaps to the new start value instead of rolling from the old score
 	gearSet = 0
 	playerLocation = 120
