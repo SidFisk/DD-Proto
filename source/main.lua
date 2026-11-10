@@ -547,7 +547,7 @@ local BANNER_HOLD_FRAMES = 20    -- pause on the first view (30 fps)
 local BANNER_SCROLL_FRAMES = 100 -- frames to pan across the whole image
 local BANNER_TOTAL_FRAMES = BANNER_HOLD_FRAMES + BANNER_SCROLL_FRAMES + 20
 local BANNER_FADE_FRAMES = 15        -- sound fades out over the last bit of the sequence
-local BANNER_SKID_FRAMES = {25, 85}  -- skid plays twice (0.7s each, both finish well before the fade starts)
+local BANNER_SKID_FRAMES = {65, 100} -- skid plays twice (0.7s each); the last one ends at ~frame 121, just before the fade starts at 125
 local bannerFrame = 0
 local bannerActive = bannerImage ~= nil
 local bannerFadeStart = BANNER_TOTAL_FRAMES - BANNER_FADE_FRAMES -- moves earlier if A skips the intro
