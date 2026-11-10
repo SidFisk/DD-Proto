@@ -541,9 +541,65 @@ local function updateModeSelect()
 				gfx.drawTextAligned("BEST: " .. math.ceil(highScores[currentMode]/50), STATS_CX + STATS_SPACING, STATS_Y, kTextAlignment.center)
 end
 
+-- Intro banner: 1000x240 image, wider than the 400px screen, so pan it right-to-left
+local bannerImage = gfx.image.new("images/banner")
+local BANNER_HOLD_FRAMES = 20    -- pause on the first view (30 fps)
+local BANNER_SCROLL_FRAMES = 100 -- frames to pan across the whole image
+local BANNER_TOTAL_FRAMES = BANNER_HOLD_FRAMES + BANNER_SCROLL_FRAMES + 20
+local BANNER_FADE_FRAMES = 15        -- sound fades out over the last bit of the sequence
+local BANNER_SKID_FRAMES = {25, 85}  -- skid plays twice (0.7s each, both finish well before the fade starts)
+local bannerFrame = 0
+local bannerActive = bannerImage ~= nil
+local bannerFadeStart = BANNER_TOTAL_FRAMES - BANNER_FADE_FRAMES -- moves earlier if A skips the intro
+local bannerSoundStarted = false
+
+local function stopBannerSound()
+	brah:stop()
+	skidSound:stop()
+	brah:setVolume(1)
+	skidSound:setVolume(1) -- restore for gameplay
+end
+
+local function drawBanner()
+	local w = bannerImage:getSize()
+
+	-- Sound: brah runs through the whole sequence, skid is layered over it twice
+	if not bannerSoundStarted then
+		bannerSoundStarted = true
+		brah:setVolume(1)
+		skidSound:setVolume(1)
+		brah:play(1, 1)
+	end
+	for _, f in ipairs(BANNER_SKID_FRAMES) do
+		if bannerFrame == f and bannerFrame < bannerFadeStart then skidSound:play() end
+	end
+	if bannerFrame >= bannerFadeStart then
+		local v = 1 - (bannerFrame - bannerFadeStart) / BANNER_FADE_FRAMES
+		if v < 0 then v = 0 end
+		brah:setVolume(v)
+		skidSound:setVolume(v) -- a skid still ringing out fades with everything else
+	end
+	if bannerFadeStart > bannerFrame and playdate.buttonJustPressed(playdate.kButtonA) then
+		bannerFadeStart = bannerFrame -- skip: fade the sound out now instead of cutting off
+	end
+	local t = math.max(0, bannerFrame - BANNER_HOLD_FRAMES) / BANNER_SCROLL_FRAMES
+	if t > 1 then t = 1 end
+	t = t * t * t -- ease-in (cubic): starts slow, gets faster the further it scrolls
+	gfx.clear(gfx.kColorWhite)
+	bannerImage:draw(-(w - 400) * t, 0)
+	bannerFrame = bannerFrame + 1
+	if bannerFrame >= bannerFadeStart + BANNER_FADE_FRAMES then
+		stopBannerSound() -- fade has finished: nothing is left playing
+		bannerActive = false
+		gfx.sprite.redrawBackground()
+	end
+end
+
 function playdate.update() -- Waits for user to press A before resetting/restarting the game
 
-	if inModeSelect then
+	if bannerActive then
+		drawBanner()
+	elseif inModeSelect then
 		updateModeSelect()
 	elseif playTimer.value == 0 then
 		-- two states are possible if the timer is 0.  You are at the start (new game launch) or you have finished a play session
