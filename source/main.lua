@@ -53,10 +53,10 @@ local gearSet = 0 -- Initial gear setting
 	
 --Game Modes
 local modes = {
-	{ name = "CLASSIC", desc = "Just like the original", finishFile = "images/finish_classic", speedMult = 1, scoreMult = 1, rogueMult = 0, crashEnds = false }, -- Main game
-	{ name = "TURBO", desc = "Cars move faster and laps are doubled", finishFile = "images/finish_turbo", speedMult = 1.5, scoreMult = 2, rogueMult = 0, crashEnds = false }, -- Faster cars, double score, 
-	{ name = "ROGUE", desc = "Classic with no second chances. One crash ends your run", finishFile = "images/finish_rogue", background = "images/background_rogue", speedMult = 1, scoreMult = 1, rogueMult = -1, crashEnds = true }, -- Classic speed and score, but a crash ends the round
-	{ name = "ROGUE ENDLESS", desc = "No clock. Race as long as you dare.", finishFile = "images/finish_rogue_endless", background = "images/background_rogue", speedMult = 1, rogueMult = -1, scoreMult = 1, crashEnds = true, endless = true }, -- Like Rogue, but no time limit: keeps going until you crash
+	{ name = "CLASSIC", cardFile = "images/mode_classic", desc = "Just like the original", finishFile = "images/finish_classic", speedMult = 1, scoreMult = 1, rogueMult = 0, crashEnds = false }, -- Main game
+	{ name = "TURBO", cardFile = "images/mode_turbo", desc = "Cars move faster and laps are doubled", finishFile = "images/finish_turbo", speedMult = 1.5, scoreMult = 2, rogueMult = 0, crashEnds = false }, -- Faster cars, double score, 
+	{ name = "ROGUE", cardFile = "images/mode_rogue", desc = "Classic with no second chances. One crash ends your run", finishFile = "images/finish_rogue", background = "images/background_rogue", speedMult = 1, scoreMult = 1, rogueMult = -1, crashEnds = true }, -- Classic speed and score, but a crash ends the round
+	{ name = "ROGUE ENDLESS", cardFile = "images/mode_rogue_endless", desc = "No clock. Race as long as you dare.", finishFile = "images/finish_rogue_endless", background = "images/background_rogue", speedMult = 1, rogueMult = -1, scoreMult = 1, crashEnds = true, endless = true }, -- Like Rogue, but no time limit: keeps going until you crash
 }
 local currentMode = 1 -- Index of the selected mode in modes
 local crashEnded = false -- Flag set when a crash ends the round (Rogue)
@@ -433,14 +433,54 @@ end
 
 local inModeSelect = false -- True while the mode select screen is showing
 
+-- Mode select screen art and layout (tweak these numbers to nudge things around)
+local modeSelectImage = gfx.image.new("images/mode_select") -- Full screen background
+local modeShifterImage = gfx.image.new("images/shifter") -- Same shifter knob used in the race
+for _, mode in ipairs(modes) do
+	mode.cardImg = gfx.image.new(mode.cardFile) -- Per-mode card (nil until the PNG exists)
+end
+local MODE_SHIFTER_X = 70 -- Horizontal centre of the shifter slot in mode_select.png
+local MODE_SHIFTER_Y = { 147, 127, 107, 87 } -- Shifter height for modes 1-4 (N, 1, 2, 3 on the gate)
+local CARD_CX = 250 -- Horizontal centre of the card (and the stats text under it)
+local CARD_TOP = 66 -- Top edge of the card, just under the title bar
+local CARD_CLIP_X = 100 -- Cards slide only inside the white panel, so they never cross the shifter
+local CARD_CLIP_Y = 60
+local CARD_TRAVEL = 320 -- How far (px) a card flies when leaving or entering
+local CARD_ANIM_FRAMES = 9 -- Length of the fly in/out animation
+local STATS_Y = 192 -- Top of the stats text, below the card
+local cardAnimFrame = CARD_ANIM_FRAMES -- Animation progress; equal to CARD_ANIM_FRAMES when idle
+local cardOutMode = nil -- Mode whose card is flying out
+local cardDir = 1 -- +1: shifted up (old card exits right, new enters from left), -1: the reverse
+
+local function shiftMode(delta)
+	-- Moves the selector like setSpeed() moves gears: clamps at the ends, and only plays the shift sound if it moved
+	local newMode = currentMode + delta
+	if newMode < 1 or newMode > #modes then return end
+	cardOutMode = currentMode
+	cardDir = delta
+	currentMode = newMode
+	cardAnimFrame = 0
+	shiftSound:play()
+end
+
+local function drawModeCard(modeIndex, offsetX)
+	-- Draws a mode's card centred at CARD_CX (plus an offset); falls back to text if the PNG is missing
+	local mode = modes[modeIndex]
+	if mode.cardImg then
+		local w = mode.cardImg:getSize()
+		mode.cardImg:draw(math.floor(CARD_CX - w/2 + offsetX), CARD_TOP)
+	else
+		gfx.drawTextAligned(mode.name, math.floor(CARD_CX + offsetX), CARD_TOP + 20, kTextAlignment.center)
+		gfx.drawTextInRect(mode.desc, math.floor(CARD_CX - 120 + offsetX), CARD_TOP + 44, 240, 60, nil, nil, kTextAlignment.center)
+	end
+end
+
 local function updateModeSelect()
 	-- Mode select screen: D-pad up/down chooses a mode, A starts a round in that mode
 	if playdate.buttonJustPressed(playdate.kButtonUp) then
-		currentMode -= 1
-		if currentMode < 1 then currentMode = #modes end
+		shiftMode(1) -- up = next mode, like shifting up a gear
 	elseif playdate.buttonJustPressed(playdate.kButtonDown) then
-		currentMode += 1
-		if currentMode > #modes then currentMode = 1 end
+		shiftMode(-1)
 	end
 
 	if playdate.buttonJustPressed(playdate.kButtonA) then
@@ -451,26 +491,28 @@ local function updateModeSelect()
 		return
 	end
 
-	gfx.clear()
-	gfx.drawText("SELECT MODE", 20, 10)
-	gfx.drawLine(16, 32, 384, 32)
-	gfx.drawLine(176, 40, 176, 200)
+		-- Advance the card fly in/out animation (ease-out)
+		if cardAnimFrame < CARD_ANIM_FRAMES then cardAnimFrame += 1 end
+		local t = cardAnimFrame / CARD_ANIM_FRAMES
+		local ease = 1 - (1 - t) ^ 3
 
-	-- Modes listed vertically on the left, the selected one boxed
-	for i, mode in ipairs(modes) do
-		local y = 46 + (i - 1) * 32
-		gfx.drawText(mode.name, 28, y)
-		if i == currentMode then
-			gfx.drawRect(18, y - 6, 150, 26)
+		gfx.clear()
+		modeSelectImage:draw(0, 0) -- Background (title, shifter gate, button hints are all part of the art)
+		modeShifterImage:drawAnchored(MODE_SHIFTER_X, MODE_SHIFTER_Y[currentMode], 0.5, 0.5)
+
+		-- Card(s), clipped to the white panel
+		gfx.setClipRect(CARD_CLIP_X, CARD_CLIP_Y, 400 - CARD_CLIP_X, 240 - CARD_CLIP_Y)
+		if cardAnimFrame < CARD_ANIM_FRAMES and cardOutMode then
+			drawModeCard(cardOutMode, cardDir * CARD_TRAVEL * ease) -- old card flies out
+			drawModeCard(currentMode, -cardDir * CARD_TRAVEL * (1 - ease)) -- new card flies in
+		else
+			drawModeCard(currentMode, 0)
 		end
-	end
+		gfx.clearClipRect()
 
-	-- Description (and stats) of the selected mode on the right
-	gfx.drawTextInRect(modes[currentMode].desc, 190, 46, 194, 90)
-	gfx.drawText("HIGH SCORE: " .. math.ceil(highScores[currentMode]/50), 190, 150)
-	gfx.drawText("TOTAL RACES: " .. totalPlays[currentMode], 190, 170)
-
-	gfx.drawText("UP/DOWN: CHOOSE    A: START", 20, 214)
+		-- Stats for the selected mode, below the card
+		gfx.drawTextAligned("TOTAL RACES: " .. totalPlays[currentMode], CARD_CX, STATS_Y, kTextAlignment.center)
+		gfx.drawTextAligned("HIGH SCORE: " .. math.ceil(highScores[currentMode]/50), CARD_CX, STATS_Y + 18, kTextAlignment.center)
 end
 
 function playdate.update() -- Waits for user to press A before resetting/restarting the game
@@ -483,6 +525,7 @@ function playdate.update() -- Waits for user to press A before resetting/restart
 		checkFinish()
 		if playdate.buttonJustPressed(playdate.kButtonA) then
 			inModeSelect = true -- A on the start or finish screen opens the mode select screen
+				cardAnimFrame = CARD_ANIM_FRAMES -- no card animation on arrival
 		end
 		gfx.sprite.update()
 		if hasStarted == true then updateText() end
