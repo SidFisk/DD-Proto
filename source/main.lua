@@ -482,8 +482,7 @@ function playdate.update() -- Waits for user to press A before resetting/restart
 		checkStart()
 		checkFinish()
 		if playdate.buttonJustPressed(playdate.kButtonA) then
-inModeSelect = true -- A on the start or finish screen opens the mode select screen
-		
+			inModeSelect = true -- A on the start or finish screen opens the mode select screen
 		end
 		gfx.sprite.update()
 		if hasStarted == true then updateText() end
