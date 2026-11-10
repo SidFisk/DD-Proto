@@ -47,14 +47,14 @@ local car1Location = 125 -- Default horizontal location of Car 1
 local car2Location = 175 -- Default horizontal location of Car 2
 local playTimer = nil -- Value of the timer
 local playTime = 60*1000 -- Total time allowed (ms)
-local lapCount = 0 -- Score for the game
+local lapCount = 995 * 50 -- TEMP TEST: start at lap 995 -- Score for the game
 local backgroundImage = nil -- Road background for the round being played (Rogue modes use their own, see reset)
 local gearSet = 0 -- Initial gear setting 
 	
 --Game Modes
 local modes = {
 	{ name = "CLASSIC", cardFile = "images/Mode_classic", desc = "Just like the original", finishFile = "images/finish_classic", speedMult = 1, scoreMult = 1, rogueMult = 0, crashEnds = false }, -- Main game
-	{ name = "TURBO", cardFile = "images/Mode_turbo", desc = "Cars move faster and laps are doubled", finishFile = "images/finish_turbo", speedMult = 1.5, scoreMult = 2, rogueMult = 0, crashEnds = false }, -- Faster cars, double score, 
+	{ name = "TURBO", cardFile = "images/Mode_turbo", desc = "Cars move faster and laps are doubled", finishFile = "images/finish_turbo", speedMult = 2, scoreMult = 2, rogueMult = 0, crashEnds = false }, -- Faster cars, double score, 
 	{ name = "ROGUE", cardFile = "images/Mode_rogue", desc = "Classic with no second chances. One crash ends your run", finishFile = "images/finish_rogue", background = "images/background_rogue", speedMult = 1, scoreMult = 1, rogueMult = -1, crashEnds = true }, -- Classic speed and score, but a crash ends the round
 	{ name = "ROGUE ENDLESS", cardFile = "images/Mode_rogue_endless", desc = "No clock. Race as long as you dare.", finishFile = "images/finish_rogue_endless", background = "images/background_rogue", speedMult = 1, rogueMult = -1, scoreMult = 1, crashEnds = true, endless = true }, -- Like Rogue, but no time limit: keeps going until you crash
 }
@@ -147,7 +147,8 @@ local function reset()
 		local duration = playTime
 		if modes[currentMode].endless then duration = 24*60*60*1000 end
 		playTimer=playdate.timer.new(duration, duration, 0, playdate.easingFunctions.linear)
-	lapCount = 0
+	lapCount = 995 * 50 -- TEMP TEST: start at lap 995
+	lapShown = nil -- counter snaps to the new start value instead of rolling from the old score
 	gearSet = 0
 	playerLocation = 120
 	playerAdjust = 0
@@ -173,10 +174,55 @@ local function reset()
 			gfx.sprite.addDirtyRect(0, 0, 400, 240) -- redraw the road with this mode's background
 end
 
+-- Odometer-style lap counter: each digit wheel rolls up when its value changes
+local LAP_ROLL_MS = 150 -- roll duration per digit (ms); tweak to taste
+local lapShown = nil -- digits currently targeted, e.g. {"0","0","5"}; nil = snap with no roll (set on restart)
+local lapPrev = {} -- digit each wheel is rolling away from
+local lapRollStart = {} -- time (ms) each wheel's roll began
+
 local function updateText() 
 -- Updates score and timer values to the screen
 	if hasStarted == true then
-		gfx.drawText(math.ceil(lapCount/50), 44, 192)
+		-- Lap counter: each digit is centered in its own fixed-width cell
+		local LAP_X, LAP_Y, LAP_CELL = 32, 192, 9 -- left edge of first cell, y, cell width (px); tweak to taste
+		local lapTotal = math.ceil(lapCount/50)
+		local lapStr = string.format("%03d", lapTotal % 1000) -- rolls over 999 -> 000 (finish card still shows the full score)
+		local lapInverted = lapTotal >= 1000 -- after the first rollover: white digits on a black block
+		local LAP_DIGIT_NUDGE = { ["1"] = 2 } -- per-digit x tweak (px); positive = right
+		local LAP_PAD = 2 -- extra black border around the digits (px)
+		local BLOCK_DX, BLOCK_DY = 5, -2 -- shifts the black block only (px); +x = right, -y = up
+		if lapInverted then
+			gfx.setColor(gfx.kColorBlack)
+			gfx.fillRect(LAP_X - LAP_PAD + BLOCK_DX, LAP_Y - LAP_PAD + BLOCK_DY, LAP_CELL * 3 + LAP_PAD * 2, gfx.getFont():getHeight() + LAP_PAD * 2)
+			gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
+		end
+		local now = playdate.getCurrentTimeMilliseconds()
+		if lapShown == nil then
+			lapShown = { lapStr:sub(1,1), lapStr:sub(2,2), lapStr:sub(3,3) }
+			for i = 1, 3 do lapPrev[i] = lapShown[i]; lapRollStart[i] = -LAP_ROLL_MS end
+		end
+		local fontH = gfx.getFont():getHeight()
+		local LAP_CLIP_PAD_X = 6 -- extra clip room left/right of the counter (px)
+		for i = 1, 3 do
+			local d = lapStr:sub(i, i)
+			if d ~= lapShown[i] then -- value changed: start a roll (a change mid-roll restarts from the old target)
+				lapPrev[i] = lapShown[i]
+				lapShown[i] = d
+				lapRollStart[i] = now
+			end
+			local t = math.min(1, (now - lapRollStart[i]) / LAP_ROLL_MS)
+			local e = 1 - (1 - t) ^ 3 -- cubic ease-out
+			local off = math.floor(e * fontH + 0.5)
+			local cellLeft = LAP_X + (i - 1) * LAP_CELL
+			local cellCenter = cellLeft + LAP_CELL / 2
+			gfx.setClipRect(LAP_X - LAP_CLIP_PAD_X, LAP_Y, LAP_CELL * 3 + LAP_CLIP_PAD_X * 2, fontH) -- clip vertically only; the glyphs are wider than a cell so a per-cell clip chops their sides
+			if t < 1 then
+				gfx.drawTextAligned(lapPrev[i], cellCenter + (LAP_DIGIT_NUDGE[lapPrev[i]] or 0), LAP_Y - off, kTextAlignmentCenter)
+			end
+			gfx.drawTextAligned(d, cellCenter + (LAP_DIGIT_NUDGE[d] or 0), LAP_Y + fontH - off, kTextAlignmentCenter)
+			gfx.clearClipRect()
+		end
+		gfx.setImageDrawMode(gfx.kDrawModeCopy)
 		if modes[playedMode].endless then
 				-- Endless mode: draw an infinity symbol instead of the timer
 				gfx.setLineWidth(2)
@@ -185,7 +231,25 @@ local function updateText()
 				gfx.drawEllipseInRect(43, 35, 11, 8)
 				gfx.setLineWidth(1)
 			else
-				gfx.drawText(crashEnded and 0 or math.ceil(playTimer.timeLeft/1000), 35, 30)
+				-- Clock face: a second hand sweeps clockwise from the top (60) back around to the top (0)
+				local CLK_CX, CLK_CY, CLK_R = 44, 40, 14 -- center and radius (px); tweak to taste
+				local frac = 0
+				if not crashEnded then
+					frac = 1 - math.max(0, math.min(1, playTimer.timeLeft / playTime)) -- 0 at start, 1 at time-up
+				end
+				local ang = frac * 2 * math.pi
+				local hx = CLK_CX + math.sin(ang) * (CLK_R - 3)
+				local hy = CLK_CY - math.cos(ang) * (CLK_R - 3)
+				gfx.setColor(gfx.kColorBlack)
+				gfx.setLineWidth(2)
+				gfx.drawCircleAtPoint(CLK_CX, CLK_CY, CLK_R)
+				gfx.setLineWidth(1)
+				gfx.drawLine(CLK_CX - 1, CLK_CY - CLK_R + 1, CLK_CX - 1, CLK_CY - CLK_R + 4) -- tick mark at 12 o'clock (2 px wide)
+				gfx.drawLine(CLK_CX, CLK_CY - CLK_R + 1, CLK_CX, CLK_CY - CLK_R + 4)
+				gfx.setLineWidth(2)
+				gfx.drawLine(CLK_CX, CLK_CY, hx, hy)
+				gfx.setLineWidth(1)
+				gfx.fillCircleAtPoint(CLK_CX, CLK_CY, 2) -- hub
 			end
 	end
 
@@ -634,3 +698,4 @@ function playdate.update() -- Waits for user to press A before resetting/restart
 end
 
 
+	
