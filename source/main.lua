@@ -53,10 +53,10 @@ local gearSet = 0 -- Initial gear setting
 	
 --Game Modes
 local modes = {
-	{ name = "CLASSIC", cardFile = "images/mode_classic", desc = "Just like the original", finishFile = "images/finish_classic", speedMult = 1, scoreMult = 1, rogueMult = 0, crashEnds = false }, -- Main game
-	{ name = "TURBO", cardFile = "images/mode_turbo", desc = "Cars move faster and laps are doubled", finishFile = "images/finish_turbo", speedMult = 1.5, scoreMult = 2, rogueMult = 0, crashEnds = false }, -- Faster cars, double score, 
-	{ name = "ROGUE", cardFile = "images/mode_rogue", desc = "Classic with no second chances. One crash ends your run", finishFile = "images/finish_rogue", background = "images/background_rogue", speedMult = 1, scoreMult = 1, rogueMult = -1, crashEnds = true }, -- Classic speed and score, but a crash ends the round
-	{ name = "ROGUE ENDLESS", cardFile = "images/mode_rogue_endless", desc = "No clock. Race as long as you dare.", finishFile = "images/finish_rogue_endless", background = "images/background_rogue", speedMult = 1, rogueMult = -1, scoreMult = 1, crashEnds = true, endless = true }, -- Like Rogue, but no time limit: keeps going until you crash
+	{ name = "CLASSIC", cardFile = "images/Mode_classic", desc = "Just like the original", finishFile = "images/finish_classic", speedMult = 1, scoreMult = 1, rogueMult = 0, crashEnds = false }, -- Main game
+	{ name = "TURBO", cardFile = "images/Mode_turbo", desc = "Cars move faster and laps are doubled", finishFile = "images/finish_turbo", speedMult = 1.5, scoreMult = 2, rogueMult = 0, crashEnds = false }, -- Faster cars, double score, 
+	{ name = "ROGUE", cardFile = "images/Mode_rogue", desc = "Classic with no second chances. One crash ends your run", finishFile = "images/finish_rogue", background = "images/background_rogue", speedMult = 1, scoreMult = 1, rogueMult = -1, crashEnds = true }, -- Classic speed and score, but a crash ends the round
+	{ name = "ROGUE ENDLESS", cardFile = "images/Mode_rogue_endless", desc = "No clock. Race as long as you dare.", finishFile = "images/finish_rogue_endless", background = "images/background_rogue", speedMult = 1, rogueMult = -1, scoreMult = 1, crashEnds = true, endless = true }, -- Like Rogue, but no time limit: keeps going until you crash
 }
 local currentMode = 1 -- Index of the selected mode in modes
 local crashEnded = false -- Flag set when a crash ends the round (Rogue)
