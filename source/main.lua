@@ -439,15 +439,15 @@ end
 
 -- System menu: manually clear all high scores and race counts (two-step to avoid accidents)
 local clearScoresItem
-clearScoresItem = playdate.getSystemMenu():addOptionsMenuItem("Clr Scores", { "No", "Yes" }, "No", function(value)
-	if value == "Yes" then
+clearScoresItem = playdate.getSystemMenu():addOptionsMenuItem("RESET?", { "NO", "YES" }, "NO", function(value)
+	if value == "YES" then
 		-- Wipe scores and race counts for every mode, then save
 		for i = 1, #modes do
 			highScores[i] = 0
 			totalPlays[i] = 0
 		end
 		saveGameData()
-		clearScoresItem:setValue("No") -- Reset so it can't be triggered again by accident
+		clearScoresItem:setValue("NO") -- Reset so it can't be triggered again by accident
 	end
 end)
 
@@ -459,17 +459,17 @@ local modeShifterImage = gfx.image.new("images/shifter") -- Same shifter knob us
 for _, mode in ipairs(modes) do
 	mode.cardImg = gfx.image.new(mode.cardFile) -- Per-mode card (nil until the PNG exists)
 end
-local MODE_SHIFTER_X = 74 -- Horizontal centre of the shifter slot in mode_select.png
+local MODE_SHIFTER_X = 74 -- Horizontal center of the shifter slot in mode_select.png
 local MODE_SHIFTER_Y = { 147, 127, 107, 87 } -- Shifter height for modes 1-4 (N, 1, 2, 3 on the gate)
-local CARD_CX = 246 -- Horizontal centre of the card
-local STATS_CX = 250 -- Horizontal centre of the stats text under the card
+local CARD_CX = 246 -- Horizontal center of the card
+local STATS_CX = 250 -- Horizontal center of the stats text under the card
 local CARD_TOP = 66 -- Top edge of the card, just under the title bar
 local CARD_CLIP_X = 100 -- Cards slide only inside the white panel, so they never cross the shifter
 local CARD_CLIP_Y = 60
 local CARD_TRAVEL = 320 -- How far (px) a card flies when leaving or entering
 local CARD_ANIM_FRAMES = 9 -- Length of the fly in/out animation
 local STATS_Y = 197 -- Top of the stats text, below the card
-local STATS_SPACING = 70 -- Each stat is centred this many px left/right of STATS_CX
+local STATS_SPACING = 70 -- Each stat is centered this many pixels left/right of STATS_CX
 local cardAnimFrame = CARD_ANIM_FRAMES -- Animation progress; equal to CARD_ANIM_FRAMES when idle
 local cardOutMode = nil -- Mode whose card is flying out
 local cardDir = 1 -- +1: shifted up (old card exits right, new enters from left), -1: the reverse
